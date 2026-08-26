@@ -12,4 +12,3 @@ dependencies:
   - matplotlib
   - utide
   - gsw
-  - zipp=3.23.1
