@@ -4,4 +4,4 @@ channels:
   - conda-forge
 dependencies:
   - python=3.13
-  - matplotlib-base
+  - matplotlib<3.10
