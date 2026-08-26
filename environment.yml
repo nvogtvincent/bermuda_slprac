@@ -4,11 +4,3 @@ channels:
   - conda-forge
 dependencies:
   - python=3.13
-  - jupyterlab
-  - ipykernel
-  - numpy
-  - pandas
-  - scipy
-  - matplotlib
-  - utide
-  - gsw
