@@ -48,17 +48,12 @@ def import_data(old_tg_fh='data/tg/h259_pre1985.csv',
     # Read and process BATS Hydrostation-S data
     # Note - using depth here with naive conversion to dbar for simplicity
     bats_raw = pd.read_csv(bats_fh)[['ISO_DateTime_UTC', 'Temperature', 'Salinity_1',
-                                     'CTD_Salinity',  'Depth', 'Cruise_num',
-                                     'Cast_num']]#.rename(columns={'Salinity_1': 'Salinity'})
+                                     'CTD_Salinity',  'Depth']]
     bats_raw['Pressure'] = bats_raw['Depth']*1.01
-    bats_raw['Time'] = pd.to_datetime(bats_raw['ISO_DateTime_UTC']).dt.tz_localize(None)
+    bats_raw.index = pd.to_datetime(bats_raw['ISO_DateTime_UTC']).rename(None).dt.tz_localize(None)
     bats_raw['Salinity'] = bats_raw['Salinity_1'].where(bats_raw['Salinity_1'].notna(),
                                                         bats_raw['CTD_Salinity'])
-
-    # Create multiindex
-    cast_index = pd.MultiIndex.from_arrays([bats_raw['Cruise_num'], bats_raw['Cast_num']])
-    bats_raw.index = cast_index
-    bats_raw = bats_raw[['Temperature', 'Salinity', 'Pressure', 'Time']]
+    bats_raw = bats_raw[['Temperature', 'Salinity', 'Pressure']]
     
     return tg_raw, bats_raw
 
