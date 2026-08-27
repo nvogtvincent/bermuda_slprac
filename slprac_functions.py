@@ -23,6 +23,44 @@ def locate_practical_file(relative_path):
     searched = "\n".join(f"  - {p}" for p in candidates)
     raise FileNotFoundError(f"Could not find {relative_path}. Searched:\n{searched}")
 
+def import_data(old_tg_fh='data/tg/h259_pre1985.csv',
+                new_tg_fh='data/tg/h259.csv',
+                bats_fh='data/bats/859990_v8_hydrostation_s_bottle.csv'):
+    '''Function to import TG and BATS data'''
+    
+    # Read and process old (pre-1985) TG data
+    tg_raw_1 = pd.read_csv(old_tg_fh, index_col=0) # Read CSV file
+    tg_raw_1.index = pd.to_datetime(tg_raw_1.index) # Convert index to datetime
+
+    # Read and process new (1985-present) TG data
+    tg_raw_2 = pd.read_csv(new_tg_fh, names=['year', 'month', 'day', 'hour', 'sea_level_m'])
+    time_col = pd.to_datetime(tg_raw_2['year'].astype(str) + '-' + # Reformat time column
+                              tg_raw_2['month'].astype(str).str.zfill(2) + '-' +
+                              tg_raw_2['day'].astype(str).str.zfill(2) + '-' + 
+                              tg_raw_2['hour'].astype(str).str.zfill(2))
+    tg_raw_2.index = time_col
+    tg_raw_2 = tg_raw_2[['sea_level_m']]
+    tg_raw_2['sea_level_m'] = tg_raw_2['sea_level_m']/1000 # Convert mm -> m
+
+    tg_raw = pd.concat([tg_raw_1, tg_raw_2])
+    tg_raw = tg_raw.where(tg_raw > 0)
+
+    # Read and process BATS Hydrostation-S data
+    # Note - using depth here with naive conversion to dbar for simplicity
+    bats_raw = pd.read_csv(bats_fh)[['ISO_DateTime_UTC', 'Temperature', 'Salinity_1',
+                                     'CTD_Salinity',  'Depth', 'Cruise_num',
+                                     'Cast_num']]#.rename(columns={'Salinity_1': 'Salinity'})
+    bats_raw['Pressure'] = bats_raw['Depth']*1.01
+    bats_raw['Time'] = pd.to_datetime(bats_raw['ISO_DateTime_UTC']).dt.tz_localize(None)
+    bats_raw['Salinity'] = bats_raw['Salinity_1'].where(bats_raw['Salinity_1'].notna(),
+                                                        bats_raw['CTD_Salinity'])
+
+    # Create multiindex
+    cast_index = pd.MultiIndex.from_arrays([bats_raw['Cruise_num'], bats_raw['Cast_num']])
+    bats_raw.index = cast_index
+    bats_raw = bats_raw[['Temperature', 'Salinity', 'Pressure', 'Time']]
+    
+    return tg_raw, bats_raw
 
 def matlab_datenum_to_datetime(datenum):
     """Convert MATLAB serial datenums to a pandas DatetimeIndex."""

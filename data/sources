@@ -1,0 +1,9 @@
+BATS (Hydrostation S) bottle data: 
+https://www.bco-dmo.org/dataset/859990
+
+Bermuda tide gauge data: 
+Pre-1985 data was taken from the .mat file produced by Pete, but it's available for redownload from the following sources:
+1932-1949 data: from Biological Station Bermuda A. Available from SOEST UHSLC, currently https://uhslc.soest.hawaii.edu/erddap/tabledap/global_hourly_rqds.subset?latitude,longitude,station_name,station_country,station_country_code,record_id,uhslc_id,version,gloss_id,ssc_id,reference_datum&station_name=%22Bermuda%2C%20St.%20Georges%20Island%22&record_id=2591&.viewDistinctMap=true&.viewDistinctData=1000&.viewRelatedData=0&distinct()&.last=record_id
+1949-1985 data: from St Georges. Available at BODC, currently https://www.bodc.ac.uk/resources/inventories/gloss_handbook/stations/221/
+
+1985-present data was taken from UHSLC: https://uhslc.soest.hawaii.edu/stations/?stn=259#datums
