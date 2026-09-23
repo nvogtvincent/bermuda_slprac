@@ -12,3 +12,5 @@ dependencies:
   - utide
   - gsw
   - matplotlib<3.10
+  - pyco2sys
+
