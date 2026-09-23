@@ -1,10 +1,12 @@
-# This file contains helper functions for the sea level practical. Understanding
-# these functions is not critical for understanding the sea level practical, but
-# they are provided here for your reference.
+# This file contains helper functions for the sea level practical and other data
+# analyses you might want to perform in the Bermuda field trip. Understanding
+# these functions is not critical, but they are provided here for your reference.
 
 from pathlib import Path
 from scipy.io import loadmat
 from scipy.stats import linregress, t as student_t
+from gsw.conversions import SP_from_C
+from io import StringIO
 import numpy as np
 import pandas as pd
 import matplotlib.dates as mdates
@@ -168,3 +170,140 @@ def fit_linear_trend(annual_series, start=None, end=None, confidence=0.95):
         "n_years": len(data),
         "confidence": confidence,
     }
+
+def read_oxford_ctd(fh, return_metadata=True):
+    
+    '''
+    This function imports data from the Valeport miniCTD raw text file output, and calculates
+    salinity (PSU) from conductivity (mS/cm).
+
+    Output: [Pandas dataframe, dict with metadata]
+
+    Written by ChatGPT-5.5, modified and verified by NVV.
+    '''
+
+    # Open file and process metadata first
+    metadata = {}
+    data_lines = []
+    
+    with open(fh, 'r') as f:
+        reading_data = False
+    
+        for line in f:
+            stripped = line.strip() # Remove whitespace
+
+            # Skip blank lines
+            if not stripped:
+                continue
+    
+            if not reading_data and ':' in stripped:
+                # Metadata (all metadata lines have a colon)
+                key, value = stripped.split(':', 1)
+                metadata[key.strip()] = value.strip()
+            else:
+                # Numerical data starts here
+                reading_data = True
+                data_lines.append(line)
+
+    # Write units to metadata
+    metadata['P_units'] = 'dbar'
+    metadata['T_units'] = 'degC'
+    metadata['S_units'] = 'PSU'
+    
+    # Convert numerical section to DataFrame
+    df = pd.read_csv(
+        StringIO(''.join(data_lines)),
+        sep='\t',
+        header=None,
+        names=['P', 'T', 'C'])
+
+    # Convert conductivity to salinity
+    df['S'] = SP_from_C(df['C'], df['T'], df['P'])
+    df = df[['P', 'T', 'S']] # Remove conductivity
+
+    if return_metadata:
+        return df, metadata
+    else:
+        return df
+
+def read_bios_ctd(file_handle):
+    """
+    Read an OA/OS CTD CSV file and split it into individual casts.
+
+    Parameters
+    ----------
+    file_handle : file-like object
+        Open file handle for the CSV file.
+
+    Returns
+    -------
+    casts : dict[int, pd.DataFrame]
+        Dictionary keyed by BATS_HS cast ID. Each value is the CTD
+        dataframe for that cast.
+
+    cast_times : dict[int, pd.Timestamp]
+        Dictionary keyed by BATS_HS cast ID. Each value is the
+        date/time of the cast as a pandas Timestamp.
+
+    Written by ChatGPT-5.5, modified and verified by NVV.
+    """
+
+    df = pd.read_csv(file_handle)
+
+    # More convenient column names for subsequent analysis.
+    rename = {
+        "Lat": "latitude",
+        "Long": "longitude",
+        "Pressure_db": "pressure_dbar",
+        "Depth_m": "depth_m",
+        "Temperature_C": "temperature_degC",
+        "Conductivity": "conductivity_Sv_m-1",
+        "Practical_Salinity": "salinity_PSU",
+        "Dissolved_oxygen": "dissolved_oxygen_umol_kg-1", # Best guess for units
+        "Beam_Attenuation": "beam_attenuation_m-1", # Best guess for units
+        "Fluorescence": "fluorescence", # Not sure what the units are... RFU?
+        "PAR": "PAR_umol_photons_m-2_s-1", # Best guess for units
+        "OA_Cast_No": "OA_cast_no",
+        "OA_Station_No": "OA_station_no",
+    }
+
+    def decimal_year_to_datetime(decimal_year):
+        """Convert a decimal year to a pandas Timestamp."""
+        year = int(np.floor(decimal_year))
+        fraction = decimal_year - year
+
+        start = pd.Timestamp(year=year, month=1, day=1)
+        end = pd.Timestamp(year=year+1, month=1, day=1)
+
+        return start + fraction * (end - start)
+
+    casts = {}
+    cast_times = {}
+
+    for cast_id, cast in df.groupby("BATS_HS_Cast_id", sort=False):
+        cast_id = int(cast_id)
+
+        # Decimal_Year should be constant for all observations in a cast.
+        decimal_year = cast["Decimal_Year"].dropna()
+
+        if decimal_year.empty:
+            raise ValueError(f"Cast {cast_id} has no Decimal_Year value")
+        
+        if decimal_year.max() - decimal_year.min() > 1e-8:
+            raise ValueError(
+                f"Decimal_Year is not constant within cast {cast_id}: "
+                f"range = {decimal_year.min()}–{decimal_year.max()}"
+            )
+        
+        decimal_year = decimal_year.iloc[0]
+        cast_times[cast_id] = decimal_year_to_datetime(decimal_year)
+
+        casts[cast_id] = (
+            cast
+            .drop(columns=["BATS_HS_Cast_id", "Decimal_Year"])
+            .rename(columns=rename)
+            .sort_values("pressure_dbar")
+            .reset_index(drop=True)
+        )
+
+    return casts, cast_times
