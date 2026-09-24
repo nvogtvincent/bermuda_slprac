@@ -261,7 +261,7 @@ def read_bios_ctd(file_handle):
         "Practical_Salinity": "salinity_PSU",
         "Dissolved_oxygen": "dissolved_oxygen_umol_kg-1", # Best guess for units
         "Beam_Attenuation": "beam_attenuation_m-1", # Best guess for units
-        "Fluorescence": "fluorescence", # Not sure what the units are... RFU?
+        "Fluorescence": "fluorescence_RFU", # Not sure what the units are... RFU?
         "PAR": "PAR_umol_photons_m-2_s-1", # Best guess for units
         "OA_Cast_No": "OA_cast_no",
         "OA_Station_No": "OA_station_no",
