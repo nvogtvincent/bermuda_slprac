@@ -7,6 +7,7 @@ from scipy.io import loadmat
 from scipy.stats import linregress, t as student_t
 from gsw.conversions import SP_from_C
 from io import StringIO
+from datetime import timedelta
 import numpy as np
 import pandas as pd
 import matplotlib.dates as mdates
@@ -171,7 +172,7 @@ def fit_linear_trend(annual_series, start=None, end=None, confidence=0.95):
         "confidence": confidence,
     }
 
-def read_oxford_ctd(fh, return_metadata=True):
+def read_oxford_ctd(fh, return_metadata=True, sample_freq=8):
     
     '''
     This function imports data from the Valeport miniCTD raw text file output, and calculates
@@ -220,6 +221,11 @@ def read_oxford_ctd(fh, return_metadata=True):
     # Convert conductivity to salinity
     df['S'] = SP_from_C(df['C'], df['T'], df['P'])
     df = df[['P', 'T', 'S']] # Remove conductivity
+
+    # Create time axis
+    time = pd.date_range(start=pd.to_datetime(metadata['Now'], dayfirst=True),
+                         periods=len(df), freq=timedelta(seconds=1)/sample_freq)
+    df.index = time
 
     if return_metadata:
         return df, metadata
